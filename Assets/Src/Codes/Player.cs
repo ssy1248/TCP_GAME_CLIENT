@@ -18,6 +18,11 @@ public class Player : MonoBehaviour
     Animator anim;
     TextMeshPro myText;
 
+    // 서버에서 받은 목표 위치
+    private Vector2 targetPosition;
+    // 서버에서 목표 위치를 받은지 체크할 bool값
+    private bool isTargetPositionSet = false;
+
     void Awake()
     {
         rigid = GetComponent<Rigidbody2D>();
@@ -47,6 +52,8 @@ public class Player : MonoBehaviour
         inputVec.x = Input.GetAxisRaw("Horizontal");
         inputVec.y = Input.GetAxisRaw("Vertical");
 
+        Debug.Log($"Player Update Position : {rigid.position}, Rotation : {rigid.rotation}");
+
         // 위치 이동 패킷 전송 -> 서버로
         NetworkManager.instance.SendLocationUpdatePacket(rigid.position.x, rigid.position.y);
     }
@@ -56,15 +63,19 @@ public class Player : MonoBehaviour
         if (!GameManager.instance.isLive) {
             return;
         }
-        // 힘을 준다.
-        // rigid.AddForce(inputVec);
-
-        // 속도 제어
-        // rigid.velocity = inputVec;
-
-        // 위치 이동
-        Vector2 nextVec = inputVec * speed * Time.fixedDeltaTime;
-        rigid.MovePosition(rigid.position + nextVec);
+        
+        if(isTargetPositionSet)
+        {
+            Debug.Log($"TargetPosition => {targetPosition}");
+            rigid.MovePosition(targetPosition);
+            isTargetPositionSet = false;
+        }
+        else
+        {
+            // 위치 이동
+            Vector2 nextVec = inputVec * speed * Time.fixedDeltaTime;
+            rigid.MovePosition(rigid.position + nextVec);
+        }
     }
 
     // Update가 끝난이후 적용
@@ -84,5 +95,11 @@ public class Player : MonoBehaviour
         if (!GameManager.instance.isLive) {
             return;
         }
+    }
+
+    public void UpdatePositionFromServer(float x, float y)
+    {
+        targetPosition = new Vector2(x, y);
+        isTargetPositionSet = true;
     }
 }

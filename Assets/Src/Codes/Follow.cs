@@ -4,7 +4,6 @@ using UnityEngine;
 
 public class Follow : MonoBehaviour
 {
-
     RectTransform rect;
 
     void Awake()

@@ -4,6 +4,8 @@ using System.IO;
 using System.Buffers;
 using System.Collections.Generic;
 using System;
+using System.Text;
+using JetBrains.Annotations;
 
 public class Packets : MonoBehaviour
 {
@@ -28,8 +30,22 @@ public class Packets : MonoBehaviour
             throw;
         }
     }
+
+    private static T Deserialize<T>(string jsonString)
+    {
+        return JsonUtility.FromJson<T>(jsonString);
+    }
+
+    public static T ParsePayload<T>(byte[] data)
+    {
+        string jsonString = Encoding.UTF8.GetString(data);
+
+        T response = Deserialize<T>(jsonString);
+        return response;
+    }
 }
 
+//아래에 코드들은 서버에서 프로토버퍼가 추가가 된다면 추가해야할 위치
 [ProtoContract]
 public class InitialPayload
 {
@@ -68,6 +84,13 @@ public class LocationUpdatePayload {
 }
 
 [ProtoContract]
+public class Ping
+{
+    [ProtoMember(1)]
+    public long timestamp { get; set; }
+}
+
+[ProtoContract]
 public class LocationUpdate
 {
     [ProtoMember(1)]
@@ -103,4 +126,11 @@ public class Response {
 
     [ProtoMember(4)]
     public byte[] data { get; set; }
+}
+
+public class InitialResponse
+{
+    public string userId;
+    public float x;
+    public float y;
 }

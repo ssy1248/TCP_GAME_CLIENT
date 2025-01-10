@@ -185,6 +185,7 @@ public class NetworkManager : MonoBehaviour
             y = y,
         };
 
+        Debug.Log($"SendLocationUpdatePacket => x, y => {x}, {y}");
         SendPacket(locationUpdatePayload, (uint)Packets.HandlerIds.LocationUpdate);
     }
 
@@ -227,10 +228,13 @@ public class NetworkManager : MonoBehaviour
             byte[] packetData = incompleteData.GetRange(5, packetLength - 5).ToArray();
             incompleteData.RemoveRange(0, packetLength);
 
-            // Debug.Log($"Received packet: Length = {packetLength}, Type = {packetType}");
+            Debug.Log($"Received packet: Length = {packetLength}, Type = {packetType}");
 
             switch (packetType)
             {
+                case Packets.PacketType.Ping:
+                    HandlePingPacket(packetData);
+                    break;
                 case Packets.PacketType.Normal:
                     HandleNormalPacket(packetData);
                     break;
@@ -238,6 +242,29 @@ public class NetworkManager : MonoBehaviour
                     HandleLocationPacket(packetData);
                     break;
             }
+        }
+    }
+
+    async void HandlePingPacket(byte[] data)
+    {
+        try
+        {
+            // 헤더 생성
+            byte[] header = CreatePacketHeader(data.Length, Packets.PacketType.Ping);
+
+            // 패킷 생성
+            byte[] packet = new byte[header.Length + data.Length];
+            Array.Copy(header, 0, packet, 0, header.Length);
+            Array.Copy(data, 0, packet, header.Length, data.Length);
+
+            await Task.Delay(GameManager.instance.latency);
+
+            // 패킷 전송 (클라 => 서버)
+            stream.Write(packet, 0, packet.Length);
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"HandlePingPacket Error : {e.Message}");
         }
     }
 
@@ -253,8 +280,21 @@ public class NetworkManager : MonoBehaviour
         }
 
         if (response.data != null && response.data.Length > 0) {
-            if (response.handlerId == 0) {
-                GameManager.instance.GameStart();
+            //if (response.handlerId == 0) {
+            //    GameManager.instance.GameStart();
+            //}
+            switch((Packets.HandlerIds) response.handlerId)
+            {
+                case Packets.HandlerIds.Init:
+                {
+                    Handler.InitialHadnler(Packets.ParsePayload<InitialResponse>(response.data));
+                    break;
+                }
+                case Packets.HandlerIds.LocationUpdate:
+                {
+                    Debug.Log($"Packets.HandlerIds.LocationUpdate => {response.data}");
+                    break;
+                }
             }
             ProcessResponseData(response.data);
         }
